@@ -1,5 +1,6 @@
 package dev.quentintyr.visiblearmorslots.action.handler;
 
+import dev.quentintyr.visiblearmorslots.action.handler.resolver.CuriosResolver;
 import dev.quentintyr.visiblearmorslots.action.handler.resolver.DropResolver;
 import dev.quentintyr.visiblearmorslots.action.handler.resolver.HotbarSwapResolver;
 import dev.quentintyr.visiblearmorslots.action.handler.resolver.MouseSwapResolver;
@@ -14,6 +15,12 @@ import net.minecraft.server.level.ServerPlayer;
 public class SlotActionHandler {
 
     public static void handleAction(SlotActionPayload action, ServerPlayer player) {
+        // If action targets a curios slot
+        if (action.targetSlot() == null && !action.curiosIdentifier().isEmpty()) {
+            CuriosResolver.resolve(action, player);
+            return;
+        }
+
         switch (action.actionType()) {
             case MOUSE_SWAP -> MouseSwapResolver.resolve(action, player);
             case QUICK_TRANSFER -> QuickTransferResolver.resolve(action, player);

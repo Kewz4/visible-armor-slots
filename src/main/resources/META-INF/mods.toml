@@ -26,3 +26,10 @@ logoFile="assets/visiblearmorslots/icon.png"
     versionRange="[1.20.1,1.21)"
     ordering="NONE"
     side="BOTH"
+
+[[dependencies.visiblearmorslots]]
+    modId="curios"
+    mandatory=true
+    versionRange="[5.9.1,)"
+    ordering="NONE"
+    side="BOTH"

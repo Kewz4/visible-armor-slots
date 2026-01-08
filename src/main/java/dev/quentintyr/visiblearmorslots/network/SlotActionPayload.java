@@ -9,7 +9,15 @@ public record SlotActionPayload(ActionType actionType,
         int hotbarSlot,
         boolean isShiftPressed,
         boolean isCtrlPressed,
-        boolean isCreativeMode) {
+        boolean isCreativeMode,
+        String curiosIdentifier,
+        int curiosIndex) {
+
+    // Helper constructor for non-curios actions
+    public SlotActionPayload(ActionType actionType, EquipmentSlot targetSlot, int hotbarSlot,
+                             boolean isShiftPressed, boolean isCtrlPressed, boolean isCreativeMode) {
+        this(actionType, targetSlot, hotbarSlot, isShiftPressed, isCtrlPressed, isCreativeMode, "", 0);
+    }
 
     public static void encode(SlotActionPayload payload, FriendlyByteBuf buf) {
         buf.writeEnum(payload.actionType());
@@ -21,6 +29,8 @@ public record SlotActionPayload(ActionType actionType,
         buf.writeBoolean(payload.isShiftPressed());
         buf.writeBoolean(payload.isCtrlPressed());
         buf.writeBoolean(payload.isCreativeMode());
+        buf.writeUtf(payload.curiosIdentifier());
+        buf.writeVarInt(payload.curiosIndex());
     }
 
     public static SlotActionPayload decode(FriendlyByteBuf buf) {
@@ -33,7 +43,10 @@ public record SlotActionPayload(ActionType actionType,
         boolean isShiftPressed = buf.readBoolean();
         boolean isCtrlPressed = buf.readBoolean();
         boolean isCreativeMode = buf.readBoolean();
+        String curiosIdentifier = buf.readUtf();
+        int curiosIndex = buf.readVarInt();
+
         return new SlotActionPayload(actionType, targetSlot, hotbarSlot, isShiftPressed, isCtrlPressed,
-                isCreativeMode);
+                isCreativeMode, curiosIdentifier, curiosIndex);
     }
 }
