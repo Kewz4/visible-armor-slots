@@ -31,7 +31,7 @@ public class CuriosResolver {
                     ItemStack slotStack = stackHandler.getStackInSlot(index);
 
                     // Handle swap logic
-                    if (canEquipCurio(cursorStack, action.curiosIdentifier())) {
+                    if (canEquipCurio(cursorStack, action.curiosIdentifier(), player)) {
                         stackHandler.setStackInSlot(index, cursorStack.copy());
                         player.containerMenu.setCarried(slotStack.copy());
                         InventoryUtil.syncInventoryFull(player);
@@ -41,12 +41,10 @@ public class CuriosResolver {
         }
     }
 
-    private static boolean canEquipCurio(ItemStack stack, String identifier) {
-        // Simple check: can the item be equipped in this curios slot?
-        // This usually requires checking the item's capabilities or tags
-        // For simplicity, we assume if it's empty we can swap out, if not empty we rely on Curios API validation if possible
-        // But for manual packet handling, we should probably check.
-        // Curios API has helper methods for this.
-        return true; // Simplify for now, ideally use CuriosApi.getCuriosHelper().isStackValid(stack)
+    private static boolean canEquipCurio(ItemStack stack, String identifier, ServerPlayer player) {
+        if (stack.isEmpty()) {
+            return true;
+        }
+        return CuriosApi.getCuriosHelper().isStackValid(new top.theillusivec4.curios.api.SlotContext(identifier, player, 0, false, true), stack);
     }
 }

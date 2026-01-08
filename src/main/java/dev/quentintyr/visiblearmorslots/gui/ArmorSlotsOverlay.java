@@ -45,12 +45,18 @@ public class ArmorSlotsOverlay {
             "visiblearmorslots", "textures/gui/dark-extra-slots.png");
     private static final ResourceLocation COLUMN_TEXTURE_COMPACT_DARK = new ResourceLocation(
             "visiblearmorslots", "textures/gui/dark-extra-slots-no-second-hand.png");
+    private static final ResourceLocation CURIOS_ICON = new ResourceLocation(
+            "curios", "textures/gui/curios_button.png");
 
     private final List<ArmorSlotWidget> armorSlots = new ArrayList<>();
     private final List<CuriosSlotWidget> curiosSlots = new ArrayList<>();
     private OffhandSlotWidget offhandSlot;
     private int baseX, baseY;
-    private int columnHeight = 100; // 100 with offhand, 78 without
+    private int columnHeight = 100;
+
+    private boolean showCuriosGrid = false;
+    private int curiosButtonX, curiosButtonY;
+    private boolean hasCurios = false;
 
     public int getBaseX() {
         return baseX;
@@ -77,13 +83,11 @@ public class ArmorSlotsOverlay {
             return;
         }
 
-        // Don't show on inventory screen
         if (screen instanceof InventoryScreen) {
             visible = false;
             return;
         }
 
-        // Respect allowed container whitelist
         try {
             MenuType<?> type = screen.getMenu().getType();
             ResourceLocation handlerId = ForgeRegistries.MENU_TYPES.getKey(type);
@@ -96,15 +100,14 @@ public class ArmorSlotsOverlay {
 
         visible = true;
 
-        // Calculate height based on curios slots
-        int curiosCount = getVisibleCuriosCount();
         boolean showOffhand = ModConfig.getInstance().isShowOffhandSlot();
+        columnHeight = showOffhand ? 100 : 78;
 
-        // Base height for armor (4 slots * 18) + margins (approx 22)
-        int baseArmorHeight = 78;
-        if (showOffhand) baseArmorHeight = 100;
-
-        columnHeight = baseArmorHeight + (curiosCount * 18);
+        // Add extra space for Curios toggle button
+        hasCurios = getVisibleCuriosCount() > 0;
+        if (hasCurios) {
+            columnHeight += 18; // space for button
+        }
 
         calculatePosition(screen);
         createSlots();
@@ -133,23 +136,20 @@ public class ArmorSlotsOverlay {
 
         ModConfig config = ModConfig.getInstance();
 
-        // Start from the chosen side, then apply margins and any auto offset
         if (config.getPositioning() == ModConfig.Side.RIGHT) {
             baseX = screenLeft + accessor.getBackgroundWidth() + config.getMarginX();
         } else {
             baseX = screenLeft - 28 - config.getMarginX();
 
-            // Optional extra shift to avoid potion effects overlay (left side only)
             if (config.isAutoPositioning()) {
                 Minecraft mc = Minecraft.getInstance();
                 Player player = mc.player;
                 if (player != null && player.hasEffect(MobEffects.REGENERATION)) {
-                    baseX -= 24; // shift further left
+                    baseX -= 24;
                 }
             }
         }
 
-        // Bottom-align the column
         baseY = screenTop + screenHeight - (columnHeight + 4) + config.getMarginY();
     }
 
@@ -160,7 +160,6 @@ public class ArmorSlotsOverlay {
         int itemX = baseX + 4;
         int currentY = baseY + 4;
 
-        // Create armor slots
         armorSlots.add(new ArmorSlotWidget(SlotInfo.SlotType.HELMET, itemX, currentY));
         currentY += 18;
         armorSlots.add(new ArmorSlotWidget(SlotInfo.SlotType.CHESTPLATE, itemX, currentY));
@@ -170,37 +169,64 @@ public class ArmorSlotsOverlay {
         armorSlots.add(new ArmorSlotWidget(SlotInfo.SlotType.BOOTS, itemX, currentY));
         currentY += 18;
 
-        // Create offhand slot
         if (ModConfig.getInstance().isShowOffhandSlot()) {
-            offhandSlot = new OffhandSlotWidget(itemX, currentY + 4); // Small gap for offhand separation in texture
+            offhandSlot = new OffhandSlotWidget(itemX, currentY + 4);
             currentY += 22;
         } else {
             offhandSlot = null;
         }
 
-        // Create Curios slots
-        Player player = Minecraft.getInstance().player;
-        if (player != null) {
-            int finalY = currentY;
-            CuriosApi.getCuriosHelper().getCuriosHandler(player).ifPresent(handler -> {
-                int yOffset = finalY;
-                Map<String, ICurioStacksHandler> curios = handler.getCurios();
-                for (Map.Entry<String, ICurioStacksHandler> entry : curios.entrySet()) {
-                    ICurioStacksHandler stackHandler = entry.getValue();
-                    if (!stackHandler.isVisible()) continue;
+        if (hasCurios) {
+            curiosButtonX = itemX + 3; // Center roughly
+            curiosButtonY = currentY + 2;
 
-                    IDynamicStackHandler stacks = stackHandler.getStacks();
-                    for (int i = 0; i < stacks.getSlots(); i++) {
-                        // TODO: get icon for slot type if possible
-                        ResourceLocation icon = null;
-                        // Try to get icon from Curios API registry?
-                        // CuriosApi.getIconHelper().getIcon(entry.getKey())?
+            // Calculate grid for curios slots
+            // Grid should appear to the left (or right)
+            ModConfig config = ModConfig.getInstance();
+            int gridXOffset = (config.getPositioning() == ModConfig.Side.RIGHT) ? 28 : -20;
 
-                        curiosSlots.add(new CuriosSlotWidget(itemX, yOffset, entry.getKey(), i, icon));
-                        yOffset += 18;
+            // Re-fetch slots for grid
+            Player player = Minecraft.getInstance().player;
+            if (player != null) {
+                int startX = baseX + gridXOffset;
+                int startY = baseY + 4; // Align top
+
+                final int[] slotCounter = {0};
+                final int[] col = {0};
+                final int[] row = {0};
+
+                int maxRows = 4 + (offhandSlot != null ? 1 : 0); // Match height roughly
+
+                CuriosApi.getCuriosHelper().getCuriosHandler(player).ifPresent(handler -> {
+                    Map<String, ICurioStacksHandler> curios = handler.getCurios();
+                    for (Map.Entry<String, ICurioStacksHandler> entry : curios.entrySet()) {
+                        ICurioStacksHandler stackHandler = entry.getValue();
+                        if (!stackHandler.isVisible()) continue;
+
+                        IDynamicStackHandler stacks = stackHandler.getStacks();
+                        for (int i = 0; i < stacks.getSlots(); i++) {
+                            ResourceLocation icon = CuriosApi.getIconHelper().getIcon(entry.getKey());
+
+                            // Grid logic: Fill downwards, then move sideways (away from column)
+                            int xPos = startX;
+                            if (config.getPositioning() == ModConfig.Side.RIGHT) {
+                                xPos += col[0] * 18;
+                            } else {
+                                xPos -= col[0] * 18;
+                            }
+                            int yPos = startY + (row[0] * 18);
+
+                            curiosSlots.add(new CuriosSlotWidget(xPos, yPos, entry.getKey(), i, icon));
+
+                            row[0]++;
+                            if (row[0] >= maxRows) {
+                                row[0] = 0;
+                                col[0]++;
+                            }
+                        }
                     }
-                }
-            });
+                });
+            }
         }
     }
 
@@ -213,21 +239,10 @@ public class ArmorSlotsOverlay {
         if (player == null)
             return;
 
-        // Get fresh inventory reference
         Inventory inventory = player.getInventory();
-
-        // Draw column background
-        // For dynamic height, we might need to tile the background or stretch it.
-        // The existing textures are fixed size.
-        // We can use the top part, tile the middle, and use the bottom part.
-        // Or simpler: draw the background repeatedly.
-        // Since we don't have a dynamic GUI texture, let's just tile a generic background or use fill for now?
-        // Or better: Use the existing texture for the top part (armor) and tile a slot background for curios.
 
         ModConfig config = ModConfig.getInstance();
         boolean dark = config.isDarkMode();
-
-        // Draw Armor + Offhand background using the existing texture
         boolean showOffhand = offhandSlot != null;
         ResourceLocation baseTex;
         if (dark) {
@@ -236,29 +251,22 @@ public class ArmorSlotsOverlay {
             baseTex = showOffhand ? COLUMN_TEXTURE_FULL : COLUMN_TEXTURE_COMPACT;
         }
 
+        // Draw Main Column Background
         int baseHeight = showOffhand ? 100 : 78;
-
-        // If we have curios, we need to extend the background.
-        // We can draw the top part, then for Curios draw individual slot backgrounds.
-        // Actually, the base texture has borders. Tiling might look weird.
-        // Let's draw the standard texture first.
         drawContext.blit(baseTex, baseX, baseY, 0, 0, 24, baseHeight, 24, baseHeight);
 
-        // Draw Curios backgrounds
-        // We need a texture for a generic slot background.
-        // We can reuse a part of the existing texture (e.g. one of the middle slots)
-        int curiosStartY = baseY + baseHeight;
-        for (CuriosSlotWidget slot : curiosSlots) {
-            // Draw a 18x18 slot background (plus borders?). The column is 24 wide.
-            // Let's grab a 24x18 slice from the texture (e.g. from y=22 to 40)
-            drawContext.blit(baseTex, baseX, slot.getY() - 1, 0, 22, 24, 18, 24, baseHeight);
-        }
+        // Draw Curios Button if present
+        if (hasCurios) {
+            // Extend background for button? Or just draw button?
+            // Let's assume we can draw the button below.
+            // A small background patch would be nice but maybe not strictly necessary.
+            // Using part of the texture again for background?
+            // drawContext.blit(baseTex, baseX, baseY + baseHeight, 0, 22, 24, 18, 24, baseHeight);
 
-        // Wait, if we draw curios below, we might need to draw the bottom border of the column at the very end.
-        // The current textures include the bottom border.
-        // Ideally we would split the texture rendering: Top cap, Middle (repeating), Bottom cap.
-        // But we are limited by existing assets.
-        // For now, let's just overlay the curios slots.
+            // Draw button icon
+            int u = showCuriosGrid ? 9 : 0;
+            drawContext.blit(CURIOS_ICON, curiosButtonX, curiosButtonY, u, 0, 9, 9, 18, 9);
+        }
 
         // Render armor slots
         for (int i = 0; i < armorSlots.size(); i++) {
@@ -281,18 +289,31 @@ public class ArmorSlotsOverlay {
             }
         }
 
-        // Render Curios slots
-        Optional<ICuriosItemHandler> curiosHandler = CuriosApi.getCuriosHelper().getCuriosHandler(player).resolve();
-        if (curiosHandler.isPresent()) {
-            for (CuriosSlotWidget slot : curiosSlots) {
-                curiosHandler.get().getStacksHandler(slot.getIdentifier()).ifPresent(stackHandler -> {
-                    ItemStack stack = stackHandler.getStacks().getStackInSlot(slot.getIndex());
-                    slot.render(drawContext, stack, mouseX, mouseY);
+        // Render Curios Grid
+        if (showCuriosGrid && hasCurios) {
+            Optional<ICuriosItemHandler> curiosHandler = CuriosApi.getCuriosHelper().getCuriosHandler(player).resolve();
+            if (curiosHandler.isPresent()) {
+                for (CuriosSlotWidget slot : curiosSlots) {
+                    // Draw slot background (reuse part of existing texture for 18x18 slot background)
+                    // The standard texture has slots at y=4, 22, 40...
+                    // We can take a slice from y=22 (middle slot)
+                    // The texture is 24 wide, slot is centered. slotX = x+4.
+                    // We need to draw background at slot.x - 4, slot.y - 1?
+                    // Let's just draw a standard slot background.
 
-                    if (slot.isMouseOver(mouseX, mouseY)) {
-                        drawContext.fill(slot.getX(), slot.getY(), slot.getX() + 16, slot.getY() + 16, 0x80FFFFFF);
-                    }
-                });
+                    // Actually, simpler: draw the item slot background from vanilla?
+                    // or just reuse our mod texture slice.
+                    drawContext.blit(baseTex, slot.getX() - 4, slot.getY() - 1, 0, 22, 24, 18, 24, baseHeight);
+
+                    curiosHandler.get().getStacksHandler(slot.getIdentifier()).ifPresent(stackHandler -> {
+                        ItemStack stack = stackHandler.getStacks().getStackInSlot(slot.getIndex());
+                        slot.render(drawContext, stack, mouseX, mouseY);
+
+                        if (slot.isMouseOver(mouseX, mouseY)) {
+                            drawContext.fill(slot.getX(), slot.getY(), slot.getX() + 16, slot.getY() + 16, 0x80FFFFFF);
+                        }
+                    });
+                }
             }
         }
     }
@@ -337,22 +358,31 @@ public class ArmorSlotsOverlay {
                 return;
             }
 
-            // Curios
-            Optional<ICuriosItemHandler> curiosHandler = CuriosApi.getCuriosHelper().getCuriosHandler(player).resolve();
-            if (curiosHandler.isPresent()) {
-                for (CuriosSlotWidget slot : curiosSlots) {
-                    if (slot.isMouseOver(mouseX, mouseY)) {
-                        curiosHandler.get().getStacksHandler(slot.getIdentifier()).ifPresent(stackHandler -> {
-                            ItemStack stack = stackHandler.getStacks().getStackInSlot(slot.getIndex());
-                            if (!stack.isEmpty()) {
-                                drawContext.renderTooltip(mc.font, stack, mouseX, mouseY);
-                            } else {
-                                // TODO: Better tooltip for empty curio slot
-                                Component tooltip = Component.literal(slot.getIdentifier());
-                                drawContext.renderTooltip(mc.font, tooltip, mouseX, mouseY);
-                            }
-                        });
-                        return;
+            // Curios Button Tooltip
+            if (hasCurios && mouseX >= curiosButtonX && mouseX < curiosButtonX + 9 &&
+                mouseY >= curiosButtonY && mouseY < curiosButtonY + 9) {
+                // Optional tooltip for button
+                return;
+            }
+
+            // Curios Slots
+            if (showCuriosGrid && hasCurios) {
+                Optional<ICuriosItemHandler> curiosHandler = CuriosApi.getCuriosHelper().getCuriosHandler(player).resolve();
+                if (curiosHandler.isPresent()) {
+                    for (CuriosSlotWidget slot : curiosSlots) {
+                        if (slot.isMouseOver(mouseX, mouseY)) {
+                            curiosHandler.get().getStacksHandler(slot.getIdentifier()).ifPresent(stackHandler -> {
+                                ItemStack stack = stackHandler.getStacks().getStackInSlot(slot.getIndex());
+                                if (!stack.isEmpty()) {
+                                    drawContext.renderTooltip(mc.font, stack, mouseX, mouseY);
+                                } else {
+                                    // Use proper translation key
+                                    Component tooltip = Component.translatable("curios.identifier." + slot.getIdentifier());
+                                    drawContext.renderTooltip(mc.font, tooltip, mouseX, mouseY);
+                                }
+                            });
+                            return;
+                        }
                     }
                 }
             }
@@ -382,11 +412,22 @@ public class ArmorSlotsOverlay {
             return true;
         }
 
+        // Check Curios Button
+        if (hasCurios && mouseX >= curiosButtonX && mouseX < curiosButtonX + 9 &&
+            mouseY >= curiosButtonY && mouseY < curiosButtonY + 9) {
+            showCuriosGrid = !showCuriosGrid;
+            mc.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(
+                net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1.0F));
+            return true;
+        }
+
         // Check Curios slots
-        for (CuriosSlotWidget slot : curiosSlots) {
-            if (slot.isMouseOver((int) mouseX, (int) mouseY)) {
-                handleCuriosClick(slot, button, mc);
-                return true;
+        if (showCuriosGrid && hasCurios) {
+            for (CuriosSlotWidget slot : curiosSlots) {
+                if (slot.isMouseOver((int) mouseX, (int) mouseY)) {
+                    handleCuriosClick(slot, button, mc);
+                    return true;
+                }
             }
         }
 
@@ -409,11 +450,7 @@ public class ArmorSlotsOverlay {
         if (mc.player == null || mc.screen == null) return;
         boolean isShiftPressed = Screen.hasShiftDown();
         boolean isCtrlPressed = Screen.hasControlDown();
-        // For curios, we treat it similarly to MOUSE_SWAP, but target is null and identifier is set
         ActionType actionType = isShiftPressed ? ActionType.QUICK_TRANSFER : ActionType.MOUSE_SWAP;
-        // NOTE: Quick transfer for curios needs backend support, currently MouseSwapResolver handles specific slots.
-        // We need CuriosResolver to handle MOUSE_SWAP logic.
-
         sendSlotAction(actionType, null, -1, isShiftPressed, isCtrlPressed, slot.getIdentifier(), slot.getIndex());
     }
 
@@ -466,7 +503,6 @@ public class ArmorSlotsOverlay {
                 sendSlotAction(ActionType.DROP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(), -1, false, false);
                 return true;
             }
-            // TODO: Curios drop support
         }
 
         if (keyCode >= KeyCodes.KEY_1 && keyCode <= KeyCodes.KEY_9) {

@@ -1,6 +1,5 @@
 package dev.quentintyr.visiblearmorslots.gui.widget;
 
-import dev.quentintyr.visiblearmorslots.gui.SlotInfo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
@@ -23,6 +22,7 @@ public class CuriosSlotWidget {
 
     public void render(GuiGraphics context, ItemStack stack, int mouseX, int mouseY) {
         if (stack.isEmpty() && icon != null) {
+            // Render the default icon (outline) with transparency
             context.blit(icon, x, y, 0, 0, 16, 16, 16, 16);
         } else {
             context.renderItem(stack, x, y);
