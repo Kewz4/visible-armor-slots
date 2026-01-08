@@ -3,7 +3,7 @@
   "package": "dev.quentintyr.visiblearmorslots.mixin.client",
   "compatibilityLevel": "JAVA_17",
   "refmap": "visiblearmorslots.refmap.json",
-  "mixins": [
+  "client": [
     "HandledScreenAccessor",
     "HandledScreenMixin"
   ],
