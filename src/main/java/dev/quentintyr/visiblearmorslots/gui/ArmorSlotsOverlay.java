@@ -45,8 +45,8 @@ public class ArmorSlotsOverlay {
             "visiblearmorslots", "textures/gui/dark-extra-slots.png");
     private static final ResourceLocation COLUMN_TEXTURE_COMPACT_DARK = new ResourceLocation(
             "visiblearmorslots", "textures/gui/dark-extra-slots-no-second-hand.png");
-    private static final ResourceLocation CURIOS_ICON = new ResourceLocation(
-            "curios", "textures/gui/inventory_button.png");
+    private static final ResourceLocation CURIOS_INVENTORY_TEXTURE = new ResourceLocation(
+            "curios", "textures/gui/inventory.png");
 
     private final List<ArmorSlotWidget> armorSlots = new ArrayList<>();
     private final List<CuriosSlotWidget> curiosSlots = new ArrayList<>();
@@ -103,11 +103,7 @@ public class ArmorSlotsOverlay {
         boolean showOffhand = ModConfig.getInstance().isShowOffhandSlot();
         columnHeight = showOffhand ? 100 : 78;
 
-        // Add extra space for Curios toggle button
         hasCurios = getVisibleCuriosCount() > 0;
-        if (hasCurios) {
-            columnHeight += 18; // space for button
-        }
 
         calculatePosition(screen);
         createSlots();
@@ -150,7 +146,15 @@ public class ArmorSlotsOverlay {
             }
         }
 
+        // Adjust baseY to accommodate the button if needed, but don't stretch the texture.
+        // We render the button below the column.
+        // If we want the column aligned to the bottom, we might need to shift it up if there's a button.
+        // But typically we align the bottom of the *column*. The button hangs below.
+
+        // Let's stick to the column bottom alignment.
         baseY = screenTop + screenHeight - (columnHeight + 4) + config.getMarginY();
+
+        // If button is present, it will be at baseY + columnHeight
     }
 
     private void createSlots() {
@@ -177,8 +181,13 @@ public class ArmorSlotsOverlay {
         }
 
         if (hasCurios) {
-            curiosButtonX = itemX + 3; // Center roughly
-            curiosButtonY = currentY + 2;
+            // Button position: centered below the column
+            // Main column is 24 wide. Button is 9 wide.
+            // Center: 24/2 - 9/2 = 12 - 4 = 8 (approx)
+            // But itemX is baseX + 4.
+            // Let's put it centered relative to the column (baseX).
+            curiosButtonX = baseX + 7;
+            curiosButtonY = baseY + columnHeight + 2;
 
             // Calculate grid for curios slots
             // Grid should appear to the left (or right)
@@ -205,7 +214,8 @@ public class ArmorSlotsOverlay {
 
                         IDynamicStackHandler stacks = stackHandler.getStacks();
                         for (int i = 0; i < stacks.getSlots(); i++) {
-                            ResourceLocation icon = CuriosApi.getIconHelper().getIcon(entry.getKey());
+                            // Icon is handled by CuriosSlotWidget constructor
+                            ResourceLocation icon = null;
 
                             // Grid logic: Fill downwards, then move sideways (away from column)
                             int xPos = startX;
@@ -251,23 +261,16 @@ public class ArmorSlotsOverlay {
             baseTex = showOffhand ? COLUMN_TEXTURE_FULL : COLUMN_TEXTURE_COMPACT;
         }
 
-        // Draw Main Column Background
-        int baseHeight = showOffhand ? 100 : 78;
-        drawContext.blit(baseTex, baseX, baseY, 0, 0, 24, baseHeight, 24, baseHeight);
+        // Draw Main Column Background with FIXED height to avoid stretching
+        int texHeight = showOffhand ? 100 : 78;
+        drawContext.blit(baseTex, baseX, baseY, 0, 0, 24, texHeight, 24, texHeight);
 
         // Draw Curios Button if present
         if (hasCurios) {
             // Draw button icon
-            // Use 0, 0, 9, 9 as UVs for the button
-            // The inventory_button.png texture usually has the button state.
-            // Assuming standard Curios button: 18x9 texture, left half is off, right half is on?
-            // Actually Curios uses standard button logic.
-            // Let's assume 0,0 is the base icon.
-            // If showCuriosGrid is true, we might want to highlight it or show active state.
-            // Curios texture is likely 18x18 or similar.
-            // Let's just draw the icon at 0,0.
-
-            drawContext.blit(CURIOS_ICON, curiosButtonX, curiosButtonY, 0, 0, 9, 9, 18, 9);
+            int u = 24;
+            int v = 9;
+            drawContext.blit(CURIOS_INVENTORY_TEXTURE, curiosButtonX, curiosButtonY, u, v, 9, 9, 256, 256);
         }
 
         // Render armor slots
@@ -297,7 +300,7 @@ public class ArmorSlotsOverlay {
             if (curiosHandler.isPresent()) {
                 for (CuriosSlotWidget slot : curiosSlots) {
                     // Draw slot background (reuse part of existing texture for 18x18 slot background)
-                    drawContext.blit(baseTex, slot.getX() - 4, slot.getY() - 1, 0, 22, 24, 18, 24, baseHeight);
+                    drawContext.blit(baseTex, slot.getX() - 4, slot.getY() - 1, 0, 22, 24, 18, 24, texHeight);
 
                     curiosHandler.get().getStacksHandler(slot.getIdentifier()).ifPresent(stackHandler -> {
                         ItemStack stack = stackHandler.getStacks().getStackInSlot(slot.getIndex());
