@@ -1,6 +1,6 @@
 package dev.quentintyr.visiblearmorslots.gui;
 
-import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.world.entity.EquipmentSlot;
 
 /**
  * Stores information about armor and offhand slots

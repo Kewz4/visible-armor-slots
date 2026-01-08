@@ -1,7 +1,7 @@
 package dev.quentintyr.visiblearmorslots.util;
 
-import net.minecraft.screen.PlayerScreenHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Utility methods for inventory operations
@@ -14,10 +14,10 @@ public class InventoryUtil {
      * 
      * @param player The player whose inventory should be synced
      */
-    public static void syncInventory(ServerPlayerEntity player) {
-        player.currentScreenHandler.syncState();
-        player.playerScreenHandler.syncState();
-        player.currentScreenHandler.sendContentUpdates();
+    public static void syncInventory(ServerPlayer player) {
+        player.containerMenu.sendAllDataToRemote();
+        player.inventoryMenu.sendAllDataToRemote();
+        player.containerMenu.broadcastChanges();
     }
 
     /**
@@ -26,8 +26,8 @@ public class InventoryUtil {
      * 
      * @param player The player whose inventory should be synced
      */
-    public static void syncInventoryFull(ServerPlayerEntity player) {
+    public static void syncInventoryFull(ServerPlayer player) {
         syncInventory(player);
-        ((PlayerScreenHandler) player.playerScreenHandler).onContentChanged(player.getInventory());
+        ((InventoryMenu) player.inventoryMenu).slotsChanged(player.getInventory());
     }
 }

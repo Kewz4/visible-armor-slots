@@ -1,19 +1,26 @@
 package dev.quentintyr.visiblearmorslots.action.handler;
 
+import dev.quentintyr.visiblearmorslots.action.handler.resolver.CuriosResolver;
 import dev.quentintyr.visiblearmorslots.action.handler.resolver.DropResolver;
 import dev.quentintyr.visiblearmorslots.action.handler.resolver.HotbarSwapResolver;
 import dev.quentintyr.visiblearmorslots.action.handler.resolver.MouseSwapResolver;
 import dev.quentintyr.visiblearmorslots.action.handler.resolver.OffhandSwapResolver;
 import dev.quentintyr.visiblearmorslots.action.handler.resolver.QuickTransferResolver;
 import dev.quentintyr.visiblearmorslots.network.SlotActionPayload;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Central processor for slot actions using chain of responsibility pattern
  */
 public class SlotActionHandler {
 
-    public static void handleAction(SlotActionPayload action, ServerPlayerEntity player) {
+    public static void handleAction(SlotActionPayload action, ServerPlayer player) {
+        // If action targets a curios slot
+        if (action.targetSlot() == null && !action.curiosIdentifier().isEmpty()) {
+            CuriosResolver.resolve(action, player);
+            return;
+        }
+
         switch (action.actionType()) {
             case MOUSE_SWAP -> MouseSwapResolver.resolve(action, player);
             case QUICK_TRANSFER -> QuickTransferResolver.resolve(action, player);

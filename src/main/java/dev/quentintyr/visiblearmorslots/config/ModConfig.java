@@ -4,8 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.fml.loading.FMLPaths;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -126,7 +126,7 @@ public class ModConfig {
         this.showOffhandSlot = showOffhandSlot;
     }
 
-    public boolean isContainerAllowed(Identifier id) {
+    public boolean isContainerAllowed(ResourceLocation id) {
         if (allowedContainers.isEmpty())
             return true; // empty means allow all
         return allowedContainers.contains(id.toString());
@@ -169,11 +169,11 @@ public class ModConfig {
      * Get the config file path for debugging
      */
     public static Path getConfigPath() {
-        return FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
+        return FMLPaths.CONFIGDIR.get().resolve(FILE_NAME);
     }
 
     public static void load() {
-        Path path = FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
+        Path path = FMLPaths.CONFIGDIR.get().resolve(FILE_NAME);
         if (!Files.exists(path)) {
             // Save defaults
             save();
@@ -226,7 +226,7 @@ public class ModConfig {
     }
 
     public static void save() {
-        Path path = FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
+        Path path = FMLPaths.CONFIGDIR.get().resolve(FILE_NAME);
         JsonObject root = new JsonObject();
         ModConfig cfg = getInstance();
         

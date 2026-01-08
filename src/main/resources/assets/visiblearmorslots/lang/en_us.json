@@ -34,5 +34,15 @@
   "config.visiblearmorslots.containers.reset": "Reset to Defaults",
   "config.visiblearmorslots.containers.narration": "%s: %s",
   "config.visiblearmorslots.tab.settings": "Settings",
-  "config.visiblearmorslots.tab.containers": "Containers"
+  "config.visiblearmorslots.tab.containers": "Containers",
+  "curios.identifier.charm": "Charm",
+  "curios.identifier.ring": "Ring",
+  "curios.identifier.belt": "Belt",
+  "curios.identifier.necklace": "Necklace",
+  "curios.identifier.head": "Head",
+  "curios.identifier.back": "Back",
+  "curios.identifier.body": "Body",
+  "curios.identifier.hands": "Hands",
+  "curios.identifier.bracelet": "Bracelet",
+  "curios.identifier.curio": "Curio"
 }
