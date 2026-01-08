@@ -2,7 +2,10 @@ package dev.quentintyr.visiblearmorslots.gui.widget;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.ItemStack;
 
 public class CuriosSlotWidget {
@@ -22,8 +25,10 @@ public class CuriosSlotWidget {
 
     public void render(GuiGraphics context, ItemStack stack, int mouseX, int mouseY) {
         if (stack.isEmpty() && icon != null) {
-            // Render the default icon (outline) with transparency
-            context.blit(icon, x, y, 0, 0, 16, 16, 16, 16);
+            // Render the icon as a sprite from the block atlas
+            TextureAtlas atlas = Minecraft.getInstance().getModelManager().getAtlas(InventoryMenu.BLOCK_ATLAS);
+            TextureAtlasSprite sprite = atlas.getSprite(icon);
+            context.blit(x, y, 0, 16, 16, sprite);
         } else {
             context.renderItem(stack, x, y);
             context.renderItemDecorations(Minecraft.getInstance().font, stack, x, y);

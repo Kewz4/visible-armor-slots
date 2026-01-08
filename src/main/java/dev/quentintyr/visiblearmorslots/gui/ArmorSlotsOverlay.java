@@ -46,7 +46,7 @@ public class ArmorSlotsOverlay {
     private static final ResourceLocation COLUMN_TEXTURE_COMPACT_DARK = new ResourceLocation(
             "visiblearmorslots", "textures/gui/dark-extra-slots-no-second-hand.png");
     private static final ResourceLocation CURIOS_ICON = new ResourceLocation(
-            "curios", "textures/gui/curios_button.png");
+            "curios", "textures/gui/inventory_button.png");
 
     private final List<ArmorSlotWidget> armorSlots = new ArrayList<>();
     private final List<CuriosSlotWidget> curiosSlots = new ArrayList<>();
@@ -257,15 +257,17 @@ public class ArmorSlotsOverlay {
 
         // Draw Curios Button if present
         if (hasCurios) {
-            // Extend background for button? Or just draw button?
-            // Let's assume we can draw the button below.
-            // A small background patch would be nice but maybe not strictly necessary.
-            // Using part of the texture again for background?
-            // drawContext.blit(baseTex, baseX, baseY + baseHeight, 0, 22, 24, 18, 24, baseHeight);
-
             // Draw button icon
-            int u = showCuriosGrid ? 9 : 0;
-            drawContext.blit(CURIOS_ICON, curiosButtonX, curiosButtonY, u, 0, 9, 9, 18, 9);
+            // Use 0, 0, 9, 9 as UVs for the button
+            // The inventory_button.png texture usually has the button state.
+            // Assuming standard Curios button: 18x9 texture, left half is off, right half is on?
+            // Actually Curios uses standard button logic.
+            // Let's assume 0,0 is the base icon.
+            // If showCuriosGrid is true, we might want to highlight it or show active state.
+            // Curios texture is likely 18x18 or similar.
+            // Let's just draw the icon at 0,0.
+
+            drawContext.blit(CURIOS_ICON, curiosButtonX, curiosButtonY, 0, 0, 9, 9, 18, 9);
         }
 
         // Render armor slots
@@ -295,14 +297,6 @@ public class ArmorSlotsOverlay {
             if (curiosHandler.isPresent()) {
                 for (CuriosSlotWidget slot : curiosSlots) {
                     // Draw slot background (reuse part of existing texture for 18x18 slot background)
-                    // The standard texture has slots at y=4, 22, 40...
-                    // We can take a slice from y=22 (middle slot)
-                    // The texture is 24 wide, slot is centered. slotX = x+4.
-                    // We need to draw background at slot.x - 4, slot.y - 1?
-                    // Let's just draw a standard slot background.
-
-                    // Actually, simpler: draw the item slot background from vanilla?
-                    // or just reuse our mod texture slice.
                     drawContext.blit(baseTex, slot.getX() - 4, slot.getY() - 1, 0, 22, 24, 18, 24, baseHeight);
 
                     curiosHandler.get().getStacksHandler(slot.getIdentifier()).ifPresent(stackHandler -> {
