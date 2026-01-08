@@ -1,11 +1,12 @@
 package dev.quentintyr.visiblearmorslots.mixin.client;
 
-import dev.quentintyr.visiblearmorslots.VisiblearmorslotsClient;
+import dev.quentintyr.visiblearmorslots.ClientSetup;
 import dev.quentintyr.visiblearmorslots.gui.ArmorSlotsOverlay;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.client.gui.screen.recipebook.RecipeBookProvider;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
+import net.minecraft.client.gui.screens.recipebook.RecipeUpdateListener;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -13,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(HandledScreen.class)
+@Mixin(AbstractContainerScreen.class)
 public class HandledScreenMixin {
 
     @Unique
@@ -23,19 +24,19 @@ public class HandledScreenMixin {
     private boolean vas$isRecipeBookOpen() {
         Object self = this;
         // Preferred: use the mapped interface when available (stable under remap)
-        if (self instanceof RecipeBookProvider provider) {
+        if (self instanceof RecipeUpdateListener provider) {
             try {
-                return provider.getRecipeBookWidget().isOpen();
+                return provider.getRecipeBookComponent().isVisible();
             } catch (Throwable ignored) {
             }
         }
         // Fallback: reflection for unexpected screens that expose the widget
         try {
-            // Try calling getRecipeBookWidget().isOpen() via reflection
-            java.lang.reflect.Method getWidget = self.getClass().getMethod("getRecipeBookWidget");
+            // Try calling getRecipeBookComponent().isVisible() via reflection
+            java.lang.reflect.Method getWidget = self.getClass().getMethod("getRecipeBookComponent");
             Object widget = getWidget.invoke(self);
             if (widget != null) {
-                java.lang.reflect.Method isOpen = widget.getClass().getMethod("isOpen");
+                java.lang.reflect.Method isOpen = widget.getClass().getMethod("isVisible");
                 Object result = isOpen.invoke(widget);
                 if (result instanceof Boolean b)
                     return b;
@@ -45,8 +46,8 @@ public class HandledScreenMixin {
         return false;
     }
 
-    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;IIF)V", at = @At("RETURN"))
-    private void onRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    @Inject(method = "render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V", at = @At("RETURN"))
+    private void onRender(GuiGraphics context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if ((Object) this instanceof InventoryScreen) {
             return;
         }
@@ -55,9 +56,9 @@ public class HandledScreenMixin {
         boolean openNow = vas$isRecipeBookOpen();
         if (vas$lastRecipeOpen == null || vas$lastRecipeOpen != openNow) {
             vas$lastRecipeOpen = openNow;
-            ArmorSlotsOverlay overlayRef = VisiblearmorslotsClient.getArmorSlotsOverlay();
+            ArmorSlotsOverlay overlayRef = ClientSetup.getArmorSlotsOverlay();
             if (overlayRef != null) {
-                overlayRef.initialize((HandledScreen<?>) (Object) this);
+                overlayRef.initialize((AbstractContainerScreen<?>) (Object) this);
             }
         }
 
@@ -66,7 +67,7 @@ public class HandledScreenMixin {
             return;
         }
 
-        ArmorSlotsOverlay overlay = VisiblearmorslotsClient.getArmorSlotsOverlay();
+        ArmorSlotsOverlay overlay = ClientSetup.getArmorSlotsOverlay();
         if (overlay != null && overlay.isVisible()) {
             overlay.render(context, mouseX, mouseY, delta);
             overlay.renderTooltips(context, mouseX, mouseY);
@@ -84,7 +85,7 @@ public class HandledScreenMixin {
             return;
         }
 
-        ArmorSlotsOverlay overlay = VisiblearmorslotsClient.getArmorSlotsOverlay();
+        ArmorSlotsOverlay overlay = ClientSetup.getArmorSlotsOverlay();
         if (overlay != null && overlay.mouseClicked(mouseX, mouseY, button)) {
             cir.setReturnValue(true);
             cir.cancel();
@@ -101,7 +102,7 @@ public class HandledScreenMixin {
             return;
         }
 
-        ArmorSlotsOverlay overlay = VisiblearmorslotsClient.getArmorSlotsOverlay();
+        ArmorSlotsOverlay overlay = ClientSetup.getArmorSlotsOverlay();
         if (overlay != null && overlay.isVisible()) {
             // Block mouse release events over overlay to prevent drops
             if (mouseX >= overlay.getBaseX() && mouseX < overlay.getBaseX() + 24 &&
@@ -122,7 +123,7 @@ public class HandledScreenMixin {
             return;
         }
 
-        ArmorSlotsOverlay overlay = VisiblearmorslotsClient.getArmorSlotsOverlay();
+        ArmorSlotsOverlay overlay = ClientSetup.getArmorSlotsOverlay();
         if (overlay != null && overlay.keyPressed(keyCode, scanCode, modifiers)) {
             cir.setReturnValue(true);
         }

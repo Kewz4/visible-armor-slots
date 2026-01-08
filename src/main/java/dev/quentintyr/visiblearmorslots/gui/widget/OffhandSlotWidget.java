@@ -1,9 +1,10 @@
 package dev.quentintyr.visiblearmorslots.gui.widget;
 
 import dev.quentintyr.visiblearmorslots.gui.SlotInfo;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Custom slot widget for off-hand items
@@ -12,22 +13,21 @@ public class OffhandSlotWidget {
     private final int x;
     private final int y;
 
-        private static final Identifier EMPTY_OFFHAND_SLOT = Identifier.of(
-            "minecraft:textures/item/empty_armor_slot_shield.png");
+    private static final ResourceLocation EMPTY_OFFHAND_SLOT = new ResourceLocation("minecraft", "textures/item/empty_armor_slot_shield.png");
 
     public OffhandSlotWidget(int x, int y) {
         this.x = x;
         this.y = y;
     }
 
-    public void render(DrawContext context, ItemStack stack, int mouseX, int mouseY) {
+    public void render(GuiGraphics context, ItemStack stack, int mouseX, int mouseY) {
         if (stack.isEmpty()) {
             // Draw shield icon for empty off-hand slot
-            context.drawTexture(EMPTY_OFFHAND_SLOT, x, y, 0, 0, 16, 16, 16, 16);
+            context.blit(EMPTY_OFFHAND_SLOT, x, y, 0, 0, 16, 16, 16, 16);
         } else {
             // Draw item with count
-            context.drawItem(stack, x, y);
-            context.drawItemInSlot(net.minecraft.client.MinecraftClient.getInstance().textRenderer, stack, x, y);
+            context.renderItem(stack, x, y);
+            context.renderItemDecorations(Minecraft.getInstance().font, stack, x, y);
         }
     }
 

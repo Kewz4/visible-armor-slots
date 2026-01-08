@@ -2,18 +2,18 @@ package dev.quentintyr.visiblearmorslots.action.handler.resolver;
 
 import dev.quentintyr.visiblearmorslots.network.SlotActionPayload;
 import dev.quentintyr.visiblearmorslots.util.InventoryUtil;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.ArmorItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Handles mouse click actions (left/right click swapping)
  */
 public class MouseSwapResolver {
 
-    public static void resolve(SlotActionPayload action, ServerPlayerEntity player) {
-        if (player == null || player.currentScreenHandler == null) {
+    public static void resolve(SlotActionPayload action, ServerPlayer player) {
+        if (player == null || player.containerMenu == null) {
             return;
         }
         
@@ -22,10 +22,10 @@ public class MouseSwapResolver {
             return;
 
         // Get current item in equipment slot (supports OFFHAND too)
-        ItemStack currentEquipped = player.getEquippedStack(targetSlot);
+        ItemStack currentEquipped = player.getItemBySlot(targetSlot);
 
         // Get cursor item
-        ItemStack cursorStack = player.currentScreenHandler.getCursorStack();
+        ItemStack cursorStack = player.containerMenu.getCarried();
 
         // Validate that the cursor item can be equipped in this slot
         if (!canEquipInSlot(cursorStack, targetSlot)) {
@@ -43,20 +43,20 @@ public class MouseSwapResolver {
 
         // Check if it's armor and matches the slot
         if (stack.getItem() instanceof ArmorItem armorItem) {
-            return armorItem.getSlotType() == slot;
+            return armorItem.getEquipmentSlot() == slot;
         }
 
         // Allow any item in offhand
         return slot == EquipmentSlot.OFFHAND;
     }
 
-    private static void performSwap(ServerPlayerEntity player, EquipmentSlot slot,
+    private static void performSwap(ServerPlayer player, EquipmentSlot slot,
             ItemStack equipped, ItemStack cursor) {
         // Equip the new item (or clear the slot if cursor is empty)
-        player.equipStack(slot, cursor.copy());
+        player.setItemSlot(slot, cursor.copy());
 
         // Put the previously equipped item on the cursor
-        player.currentScreenHandler.setCursorStack(equipped.copy());
+        player.containerMenu.setCarried(equipped.copy());
 
         // Force inventory sync to client
         InventoryUtil.syncInventoryFull(player);
